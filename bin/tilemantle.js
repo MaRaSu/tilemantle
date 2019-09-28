@@ -4,10 +4,10 @@ var yargs = require('yargs');
 var async = require('async');
 var chalk = require('chalk');
 var path = require('path');
-var turf = require('turf');
+var turf = require('@turf/turf');
 var numeral = require('numeral');
 var request = require('request');
-var tilecover = require('tile-cover');
+var tilecover = require('@mapbox/tile-cover');
 var humanizeDuration = require('humanize-duration');
 var pkg = require('../package.json');
 var ProgressBar = require('progress');
@@ -81,9 +81,11 @@ urltemplates.forEach(function(template) {
 var count_succeeded = 0;
 var count_failed = 0;
 var rawgeojson = '';
+var geojson;
 var t_start = (new Date()).getTime();
 
 async.series([
+	/*
 	function readFromPipe(callback) {
 		process.stdin.on('readable', function() {
 			var chunk = this.read();
@@ -97,6 +99,7 @@ async.series([
 			callback();
 		});
 	},
+	*/
 	function determineGeometry(callback) {
 		if (rawgeojson) {
 			geojson = JSON.parse(rawgeojson);
@@ -107,11 +110,11 @@ async.series([
 			geojson = turf.point([coords[1], coords[0]]);
 		} else if (argv.extent) {
 			var coords = String(argv.extent).split(',').map(parseFloat);
-			var input = turf.featurecollection([
-				turf.point([coords[1], coords[0]]),
-				turf.point([coords[3], coords[2]])
+			var input = turf.featureCollection([
+				turf.point([coords[0], coords[1]]),
+				turf.point([coords[2], coords[3]])
 			]);
-			geojson = turf.extent(input);
+			geojson = turf.bboxPolygon(turf.bbox(input));
 		} else {
 			displayHelp();
 			console.error('No geometry provided. Pipe geojson, or use --point or --extent');
@@ -125,7 +128,7 @@ async.series([
 		}
 
 		// tilecover doesn't like features
-		geojson = turf.merge(geojson);
+		geojson = turf.union(geojson);
 		if (geojson.type === 'Feature') {
 			geojson = geojson.geometry;
 		}
