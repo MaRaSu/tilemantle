@@ -65,6 +65,7 @@ var validateurlparam = function(template, param) {
 		process.exit(1);
 	}
 };
+var requestDelay = argv.delay.includes('ms') ? parseInt(argv.delay) : parseInt(argv.delay) * 1000;
 
 urltemplates.forEach(function(template) {
 	if (!/^https?\:/.test(template)) {
@@ -213,7 +214,9 @@ async.series([
 							callback('Request failed (non-200 status)');
 						} else {
 							count_succeeded++;
-							callback();
+							// No delay is almost immediate, assumed to be a cache HIT
+							if (time < 80) callback();
+							else setTimeout(callback, requestDelay - time);
 						}
 					});
 				}, function(err) {
